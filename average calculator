@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Average Calculator Microservice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input[type="text"], button {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .output {
+            margin-top: 20px;
+        }
+        .output div {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Average Calculator Microservice</h1>
+    <div>
+        <label for="types">Enter types (e.g., p,f,e,r): </label>
+        <input type="text" id="types" placeholder="Enter types">
+        <button onclick="fetchNumbers()">Fetch Numbers</button>
+    </div>
+    <div>
+        <button onclick="getCurrentState()">Get Current State</button>
+    </div>
+    <div class="output" id="output"></div>
+
+    <script>
+        const apiUrl = 'http://localhost:9876';
+
+        async function fetchNumbers() {
+            const types = document.getElementById('types').value.split(',');
+            if (!types.length) {
+                alert('Please enter valid types!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}/fetch_numbers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ types })
+                });
+                const data = await response.json();
+                displayOutput(data);
+            } catch (error) {
+                console.error('Error fetching numbers:', error);
+                alert('Failed to fetch numbers. Please try again.');
+            }
+        }
+
+        async function getCurrentState() {
+            try {
+                const response = await fetch(`${apiUrl}/current_state`);
+                const data = await response.json();
+                displayOutput(data);
+            } catch (error) {
+                console.error('Error getting current state:', error);
+                alert('Failed to get current state. Please try again.');
+            }
+        }
+
+        function displayOutput(data) {
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = '';
+            for (const [key, value] of Object.entries(data)) {
+                const div = document.createElement('div');
+                div.textContent = `${key}: ${JSON.stringify(value)}`;
+                outputDiv.appendChild(div);
+            }
+        }
+    </script>
+</body>
+</html>
