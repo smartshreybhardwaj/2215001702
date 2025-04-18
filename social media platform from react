@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>React Social Media Analytics Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+</head>
+<body class="p-4 font-sans bg-gray-50">
+  <div id="root"></div>
+  <script type="text/javascript">
+    const { useState, useEffect } = React;
+    const API_BASE = 'http://20.204.196.156/evaluation-service';
+
+    function App() {
+      const [activePage, setActivePage] = useState('top');
+
+      return React.createElement('div', { className: 'p-4 font-sans' },
+        React.createElement('h1', { className: 'text-3xl font-bold mb-6 text-center' }, 'Social Media Analytics Dashboard'),
+        React.createElement('div', { className: 'flex justify-center gap-4 mb-6' },
+          ['top', 'trending', 'feed'].map(page =>
+            React.createElement('button', {
+              onClick: () => setActivePage(page),
+              className: `px-4 py-2 rounded ${activePage === page ? 'bg-blue-600 text-white' : 'bg-gray-200'}`,
+              key: page
+            },
+              page === 'top' ? 'Top Users' : page === 'trending' ? 'Trending Posts' : 'Live Feed'
+            )
+          )
+        ),
+        activePage === 'top' && React.createElement(TopUsers),
+        activePage === 'trending' && React.createElement(TrendingPosts),
+        activePage === 'feed' && React.createElement(Feed)
+      );
+    }
+
+    function TopUsers() {
+      const [topUsers, setTopUsers] = useState([]);
+
+      useEffect(() => {
+        async function fetchData() {
+          const usersRes = await fetch(`${API_BASE}/users`);
+          const postsRes = await fetch(`${API_BASE}/users/posts`);
+          const commentsRes = await fetch(`${API_BASE}/comments`);
+          const users = await usersRes.json();
+          const posts = await postsRes.json();
+          const comments = await commentsRes.json();
+
+          const userCommentCount = {};
+          comments.forEach(comment => {
+            const post = posts.find(p => p.id === comment.postId);
+            if (post) {
+              userCommentCount[post.userId] = (userCommentCount[post.userId] || 0) + 1;
+            }
+          });
+
+          const top = Object.entries(userCommentCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([userId, count]) => {
+              const user = users.users.find(u => u.id === parseInt(userId));
+              return { ...user, commentCount: count };
+            });
+
+          setTopUsers(top);
+        }
+        fetchData();
+      }, []);
+
+      return React.createElement('div', { className: 'mb-6' },
+        React.createElement('h2', { className: 'text-2xl font-semibold mb-2' }, 'Top Users'),
+        React.createElement('ul', { className: 'list-disc ml-6' },
+          topUsers.map(user =>
+            React.createElement('li', { key: user.id }, `${user.name} - ${user.commentCount} comments`)
+          )
+        )
+      );
+    }
+
+    function TrendingPosts() {
+      const [posts, setPosts] = useState([]);
+
+      useEffect(() => {
+        async function fetchTrending() {
+          const postsRes = await fetch(`${API_BASE}/users/posts`);
+          const commentsRes = await fetch(`${API_BASE}/comments`);
+          const posts = await postsRes.json();
+          const comments = await commentsRes.json();
+
+          const commentCounts = {};
+          comments.forEach(comment => {
+            commentCounts[comment.postId] = (commentCounts[comment.postId] || 0) + 1;
+          });
+
+          const maxCount = Math.max(...Object.values(commentCounts));
+          const trending = Object.keys(commentCounts)
+            .filter(postId => commentCounts[postId] === maxCount)
+            .map(id => posts.posts.find(p => p.id === parseInt(id)));
+
+          setPosts(trending);
+        }
+        fetchTrending();
+      }, []);
+
+      return React.createElement('div', { className: 'mb-6' },
+        React.createElement('h2', { className: 'text-2xl font-semibold mb-2' }, 'Trending Posts'),
+        React.createElement('ul', { className: 'list-disc ml-6' },
+          posts.map(post =>
+            React.createElement('li', { key: post.id }, post.content)
+          )
+        )
+      );
+    }
+
+    function Feed() {
+      const [posts, setPosts] = useState([]);
+
+      useEffect(() => {
+        const fetchFeed = async () => {
+          const res = await fetch(`${API_BASE}/users/posts`);
+          const data = await res.json();
+          const sorted = data.posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setPosts(sorted);
+        };
+
+        fetchFeed();
+        const interval = setInterval(fetchFeed, 5000);
+        return () => clearInterval(interval);
+      }, []);
+
+      return React.createElement('div', null,
+        React.createElement('h2', { className: 'text-2xl font-semibold mb-2' }, 'Live Feed'),
+        React.createElement('ul', { className: 'list-disc ml-6' },
+          posts.map(post =>
+            React.createElement('li', { key: post.id }, post.content)
+          )
+        )
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>
